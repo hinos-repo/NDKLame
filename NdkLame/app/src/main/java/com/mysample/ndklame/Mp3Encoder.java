@@ -19,4 +19,6 @@ class Mp3Encoder
     public native static int flush(byte[] mp3buf);
 
     public native static int encodeMp3(String pcmPath, String mp3Path);
+
+    public native static int decodeMp3(short[] buffer, int samples, byte[] pcm);
 }

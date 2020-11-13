@@ -51,7 +51,9 @@ Java_com_mysample_ndklame_Mp3Encoder_encodeByte(JNIEnv *env, jclass clazz, jshor
     (*env).ReleaseByteArrayElements(mp3buf, j_mp3buf, 0);
 
     return result;
-}extern "C"
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
 Java_com_mysample_ndklame_Mp3Encoder_flush(JNIEnv *env, jclass clazz, jbyteArray mp3buf)
 {
@@ -63,7 +65,9 @@ Java_com_mysample_ndklame_Mp3Encoder_flush(JNIEnv *env, jclass clazz, jbyteArray
     (*env).ReleaseByteArrayElements(mp3buf, j_mp3buf, 0);
 
     return result;
-}extern "C"
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
 Java_com_mysample_ndklame_Mp3Encoder_encodeMp3(JNIEnv *env, jclass clazz, jstring pcm_path, jstring mp3_path) {
     const char *pcm_path_=env->GetStringUTFChars(pcm_path,0);
@@ -113,4 +117,14 @@ Java_com_mysample_ndklame_Mp3Encoder_encodeMp3(JNIEnv *env, jclass clazz, jstrin
     delete [] mp3_buffer;
 
     return result;
+}extern "C"
+JNIEXPORT jint JNICALL
+Java_com_mysample_ndklame_Mp3Encoder_decodeMp3(JNIEnv *env, jclass clazz, jshortArray buffer,
+                                               jint samples, jbyteArray pcm) {
+    jshort* j_buffer_r = (*env).GetShortArrayElements(buffer, NULL);
+
+    const jsize mp3buf_size = (*env).GetArrayLength(pcm);
+    jbyte* j_mp3buf = (*env).GetByteArrayElements(pcm, NULL);
+
+    lame_decode
 }
