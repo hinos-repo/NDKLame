@@ -1,11 +1,11 @@
 package com.mysample.ndklame;
 
-public class ChangeBuffer
+public class ChangeShortBuffer
 {
     private short[] rawData;
     private int readSize;
 
-    public ChangeBuffer(short[] rawData, int readSize)
+    public ChangeShortBuffer(short[] rawData, int readSize)
     {
         this.rawData = rawData.clone();
         this.readSize = readSize;

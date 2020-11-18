@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity
     int m_nRecoBufferSize = AudioRecord.getMinBufferSize(m_nSampleRates, m_nRecordChannel, m_nAudioFormat);
     String m_strPcmPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/record.pcm";
     String m_strMp3Path = Environment.getExternalStorageDirectory().getAbsolutePath() + (m_nChannelCount == 1 ? "/record.mp3" : "/record2.mp3");
+    String m_strConvertPCMPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/convert.pcm";
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -157,18 +158,25 @@ public class MainActivity extends AppCompatActivity
             m_nTrackBufferSize = AudioTrack.getMinBufferSize(m_nSampleRates, m_nRecordChannel, m_nAudioFormat);
             m_audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, m_nSampleRates, m_nRecordChannel, m_nAudioFormat, m_nTrackBufferSize, AudioTrack.MODE_STREAM);
 
-            m_executorService.execute(new PlayPCMThread());
+            m_executorService.execute(new PlayPCMThread(m_strPcmPath));
         }
     }
 
     class PlayPCMThread implements Runnable
     {
+        String strPath;
+
+        public PlayPCMThread(String strPath)
+        {
+            this.strPath = strPath;
+        }
+
         @Override
         public void run()
         {
             FileInputStream fis = null;
             try {
-                fis = new FileInputStream(m_strPcmPath);
+                fis = new FileInputStream(strPath);
             } catch (FileNotFoundException e)
             {
                 m_bPlaying = false;
@@ -252,7 +260,7 @@ public class MainActivity extends AppCompatActivity
 
                 Message msg = new Message();
                 msg.what = 1;
-                msg.obj = new ChangeBuffer(copyBuffer.clone(), end);
+                msg.obj = new ChangeShortBuffer(copyBuffer.clone(), end);
                 handler.sendMessage(msg);
             }
         }
@@ -264,7 +272,7 @@ public class MainActivity extends AppCompatActivity
             {
                 if (msg.what == 1)
                 {
-                    ChangeBuffer shipData = (ChangeBuffer) msg.obj;
+                    ChangeShortBuffer shipData = (ChangeShortBuffer) msg.obj;
                     short [] copyBuffer = shipData.getData();
                     if (!m_bRecord)
                     {
@@ -298,6 +306,201 @@ public class MainActivity extends AppCompatActivity
                     }
                 }
             }
+        }
+    }
+
+    public void convertPCM(View view)
+    {
+        m_executorService.execute(new Mp3ToPCMThread());
+    }
+
+    class Mp3ToPCMThread implements Runnable
+    {
+        short[] pcm_l = new short[44096];
+        short[] pcm_r = new short[44096];
+
+        public Mp3ToPCMThread()
+        {
+            Mp3Encoder.dinit();
+        }
+
+        @Override
+        public void run()
+        {
+            FileInputStream fis = null;
+            FileOutputStream outPcm = null;
+
+            byte[] buffer = new byte[522];
+
+            try {
+                fis = new FileInputStream(m_strMp3Path);
+                outPcm = new FileOutputStream(new File(m_strConvertPCMPath));
+                int len = 0;
+                while((len = fis.read(buffer)) != -1)
+                {
+                    int outLen = Mp3Encoder.decode(buffer, len, pcm_l, pcm_r);
+                    if(outLen > 0) {
+                        short[] result = new short[outLen];
+                        System.arraycopy(pcm_l, 0, result, 0, outLen);
+                        byte[] resultByteArray = ByteConvertUtil.Shorts2Bytes(result);
+                        outPcm.write(resultByteArray, 0, resultByteArray.length);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    Mp3Encoder.destroy();
+                    fis.close();
+                    outPcm.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+/*    class Mp3ToPCMThread implements Runnable //original
+    {
+        short[] pcm_l = new short[44096];
+        short[] pcm_r = new short[44096];
+
+        public Mp3ToPCMThread()
+        {
+            Mp3Encoder.dinit();
+        }
+
+        @Override
+        public void run()
+        {
+            FileInputStream fis = null;
+            FileOutputStream outPcm = null;
+            RandomAccessFile randomFile = null;
+
+            byte[] buffer = new byte[522];
+
+            try {
+                fis = new FileInputStream(m_strMp3Path);
+                randomFile = new RandomAccessFile(m_strConvertPCMPath, "rw");
+                int len = 0;
+                while((len = fis.read(buffer)) != -1)
+                {
+                    Log.e("yuruilong", "len : " + len);
+                    int outLen = Mp3Encoder.decode(buffer, len, pcm_l, pcm_r);
+                    Log.e("yuruilong", "outLen : " + outLen);
+                    if(outLen > 0) {
+                        short[] result = new short[outLen];
+                        System.arraycopy(pcm_l, 0, result, 0, outLen);
+                        byte[] resultByteArray = ByteConvertUtil.Shorts2Bytes(result);
+                        long fileLength = randomFile.length();
+                        randomFile.seek(fileLength);
+                        randomFile.write(resultByteArray, 0, resultByteArray.length);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    Mp3Encoder.destroy();
+                    randomFile.close();
+                    fis.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }*/
+
+    public void playConvertPCM(View view)
+    {
+        if (!m_bPlaying)
+        {
+            m_bPlaying = true;
+            m_nTrackBufferSize = AudioTrack.getMinBufferSize(m_nSampleRates / 2, m_nRecordChannel, m_nAudioFormat);
+            m_audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, m_nSampleRates / 2, m_nRecordChannel, m_nAudioFormat, m_nTrackBufferSize, AudioTrack.MODE_STREAM);
+
+            m_executorService.execute(new PlayPCMThread(m_strConvertPCMPath));
+        }
+    }
+
+    class Mp3BytePlay implements Runnable
+    {
+        short[] pcm_l = new short[44096];
+        short[] pcm_r = new short[44096];
+        private StreamByteHandler streamByteHandler = new StreamByteHandler();
+
+        @Override
+        public void run()
+        {
+            FileInputStream fis = null;
+
+            byte[] buffer = new byte[m_nTrackBufferSize];
+
+            m_audioTrack.play();
+
+            try {
+                fis = new FileInputStream(m_strMp3Path);
+                int len = 0;
+                while((len = fis.read(buffer)) != -1)
+                {
+                    int outLen = Mp3Encoder.decode(buffer, len, pcm_l, pcm_r);
+                    if(outLen > 0) {
+                        short[] result = new short[outLen];
+                        System.arraycopy(pcm_l, 0, result, 0, outLen);
+                        byte[] resultByteArray = ByteConvertUtil.Shorts2Bytes(result);
+
+                        Message msg = new Message();
+                        msg.what = 1;
+                        msg.obj = new ChangeByteBuffer(resultByteArray, resultByteArray.length);
+
+                        streamByteHandler.handleMessage(msg);
+                    }
+                }
+
+                streamByteHandler.sendEmptyMessage(2);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        class StreamByteHandler extends Handler
+        {
+            public StreamByteHandler()
+            {
+                Mp3Encoder.dinit();
+            }
+
+            @Override
+            public void handleMessage(@NonNull Message msg)
+            {
+                if (msg.what == 1)
+                {
+                    ChangeByteBuffer resultByteArray = (ChangeByteBuffer)msg.obj;
+                    m_audioTrack.write(resultByteArray.getData(), 0, resultByteArray.getReadSize());
+                }
+                else {
+                    m_bPlaying = false;
+                    m_audioTrack.stop();
+                    m_audioTrack.release();
+                    m_audioTrack.flush();
+                    m_audioTrack = null;
+
+                    Mp3Encoder.destroy();
+                }
+            }
+        }
+    }
+
+    public void playMp3Byte(View view)
+    {
+        if (!m_bPlaying)
+        {
+            m_bPlaying = true;
+
+            m_nTrackBufferSize = AudioTrack.getMinBufferSize(m_nSampleRates / 2, m_nRecordChannel, m_nAudioFormat);
+            m_audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, m_nSampleRates / 2, m_nRecordChannel, m_nAudioFormat, m_nTrackBufferSize, AudioTrack.MODE_STREAM);
+
+            m_executorService.execute(new Mp3BytePlay());
         }
     }
 }
