@@ -219,14 +219,15 @@ public class MainActivity extends AppCompatActivity
         m_executorService.execute(new RecordWithMp3());
     }
 
-    class RecordWithMp3 implements Runnable
+
+    class RecordWithMp3 implements Runnable // PCM Buffer decode Mp3 Buffer
     {
         File mp3File;
         FileOutputStream mp3Fos = null;
         StreamHandler handler = new StreamHandler();
         byte [] mp3Buffer;
 
-        public RecordWithMp3()
+        public RecordWithMp3() //SampleRates 44100hz, Channel 2
         {
             mp3Buffer = new byte[(int) (7200 + (m_nRecoBufferSize * 2 * 1.25))];
             mp3File = new File(m_strMp3Path);
