@@ -30,7 +30,7 @@
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="MP3로 변환"
+        android:text="PCM -> MP3 파일 변환"
         android:onClick="convertMp3"
         />
 
@@ -39,5 +39,26 @@
         android:layout_height="wrap_content"
         android:text="녹음과 동시에 MP3로 변경"
         android:onClick="recordWithConvertMp3"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="MP3 -> PCM 파일 변환"
+        android:onClick="convertPCM"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="변환된 PCM play"
+        android:onClick="playConvertPCM"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="AudioTrack으로 Byte 단위로 Mp3 플레이"
+        android:onClick="playMp3Byte"
         />
 </LinearLayout>

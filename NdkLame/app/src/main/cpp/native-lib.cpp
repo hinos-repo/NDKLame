@@ -6,7 +6,7 @@
 #include <lame_global_flags.h>
 
 #define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"zph",FORMAT,##__VA_ARGS__);
-
+#define HAVE_MPGLIB 1
 //Mp3Encoder
 static lame_global_flags *glf = NULL;
 extern "C"
@@ -117,14 +117,38 @@ Java_com_mysample_ndklame_Mp3Encoder_encodeMp3(JNIEnv *env, jclass clazz, jstrin
     delete [] mp3_buffer;
 
     return result;
-}extern "C"
+}
+
+hip_t hip;
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mysample_ndklame_Mp3Encoder_dinit(JNIEnv *env, jclass clazz) {
+    hip = hip_decode_init();
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
-Java_com_mysample_ndklame_Mp3Encoder_decodeMp3(JNIEnv *env, jclass clazz, jshortArray buffer,
-                                               jint samples, jbyteArray pcm) {
-    jshort* j_buffer_r = (*env).GetShortArrayElements(buffer, NULL);
+Java_com_mysample_ndklame_Mp3Encoder_decode(JNIEnv *env, jclass clazz, jbyteArray mp3_buf, jint len,
+                                            jshortArray pcm_l, jshortArray pcm_r) {
+    jshort* j_buffer_l = (*env).GetShortArrayElements(pcm_l, NULL);
 
-    const jsize mp3buf_size = (*env).GetArrayLength(pcm);
-    jbyte* j_mp3buf = (*env).GetByteArrayElements(pcm, NULL);
+    jshort* j_buffer_r = (*env).GetShortArrayElements(pcm_r, NULL);
 
-    lame_decode
+    jbyte* j_mp3buf = (*env).GetByteArrayElements(mp3_buf, NULL);
+
+    int ret = hip_decode(hip, (u_char*)j_mp3buf, len, j_buffer_l, j_buffer_r);
+
+    (*env).ReleaseShortArrayElements(pcm_l, j_buffer_l, 0);
+    (*env).ReleaseShortArrayElements(pcm_r, j_buffer_r, 0);
+    (*env).ReleaseByteArrayElements(mp3_buf, j_mp3buf, 0);
+
+    return ret;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mysample_ndklame_Mp3Encoder_destroy(JNIEnv *env, jclass clazz) {
+    hip_decode_exit(hip);
+    hip = NULL;
 }
